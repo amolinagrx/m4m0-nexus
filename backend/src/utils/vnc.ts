@@ -1,0 +1,2 @@
+export const CONSOLE_TICKET_TTL_SECONDS = 30;
+export const CONSOLE_SESSION_MAX_MS = 15 * 60 * 1000;

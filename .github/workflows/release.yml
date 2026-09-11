@@ -1,0 +1,29 @@
+name: Build release artifacts
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: terraform-provider/go.mod
+          cache-dependency-path: terraform-provider/go.sum
+      - name: Build Terraform provider
+        working-directory: terraform-provider
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: go build -trimpath -o terraform-provider-m4m0nexus_v0.1.0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terraform-provider-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: terraform-provider/terraform-provider-m4m0nexus_v0.1.0

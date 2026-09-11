@@ -1,0 +1,14 @@
+# Before enabling multiple backend replicas, configure a Socket.io Redis adapter
+# and ReadWriteMany backup storage. Default single replica avoids split sessions.
+replicaCount: 1
+autoscaling:
+  enabled: false
+resources:
+  backend:
+    requests: {cpu: 500m, memory: 512Mi}
+    limits: {cpu: '2', memory: 2Gi}
+  frontend:
+    requests: {cpu: 100m, memory: 64Mi}
+    limits: {cpu: '1', memory: 256Mi}
+persistence:
+  size: 100Gi

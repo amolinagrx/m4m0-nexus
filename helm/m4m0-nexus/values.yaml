@@ -1,0 +1,34 @@
+replicaCount: 1
+image:
+  backend: registry.example.com/m4m0/nexus-backend:0.1.0
+  frontend: registry.example.com/m4m0/nexus-frontend:0.1.0
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+existingSecret: nexus-secrets
+corsOrigin: https://nexus.example.com
+webhookAllowedOrigins: https://hooks.slack.com
+resources:
+  backend:
+    requests: {cpu: 200m, memory: 256Mi}
+    limits: {cpu: '2', memory: 1Gi}
+  frontend:
+    requests: {cpu: 50m, memory: 32Mi}
+    limits: {cpu: 500m, memory: 128Mi}
+ingress:
+  enabled: true
+  className: traefik
+  host: nexus.example.com
+  tlsSecret: nexus-tls
+  annotations: {}
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClass: ''
+  accessModes: [ReadWriteOnce]
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+serviceAccount:
+  create: true

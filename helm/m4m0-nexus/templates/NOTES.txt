@@ -1,0 +1,4 @@
+m4m0 NEXUS is deployed at https://{{ .Values.ingress.host }}
+External PostgreSQL 16 and Redis 7 must be provisioned first.
+Initialize the database using database/init-scripts, then seed the admin account.
+Run one backend replica by default. See docs/DEPLOYMENT.md before enabling HPA.

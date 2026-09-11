@@ -1,0 +1,118 @@
+name: m4m0-nexus
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: 3001
+  DATABASE_URL: postgres://nexus:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}@database:5432/nexus
+  REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY}
+  CORS_ORIGIN: https://${NEXUS_HOST:?Set NEXUS_HOST}
+  BACKUP_DIR: /data/backups
+  PLUGIN_DIR: /opt/nexus/plugins
+  WEBHOOK_ALLOWED_ORIGINS: ${WEBHOOK_ALLOWED_ORIGINS:-}
+services:
+  database:
+    build: ./database
+    environment:
+      POSTGRES_USER: nexus_owner
+      POSTGRES_DB: nexus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U nexus_owner -d nexus']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [internal]
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: [sh, -c, 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [internal]
+  backend:
+    image: m4m0-nexus-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment: *backend-environment
+    depends_on:
+      bootstrap: { condition: service_completed_successfully }
+      database: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    volumes:
+      - backup_data:/data/backups
+      - ./plugins:/opt/nexus/plugins:ro
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+    networks: [internal, edge]
+  bootstrap:
+    image: m4m0-nexus-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: [node, backend/dist/seed.js]
+    environment:
+      <<: *backend-environment
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@m4m0.es}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+    depends_on:
+      database: { condition: service_healthy }
+    healthcheck:
+      disable: true
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: 'no'
+    networks: [internal]
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+    networks: [edge]
+  proxy:
+    image: traefik:v3.5
+    environment:
+      NEXUS_HOST: ${NEXUS_HOST}
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?Set ACME_EMAIL}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./proxy/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./proxy/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - acme_data:/letsencrypt
+    depends_on: [frontend, backend]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    networks: [edge]
+networks:
+  internal:
+    internal: true
+  edge: {}
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  backup_data: {}
+  acme_data: {}

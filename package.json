@@ -1,0 +1,24 @@
+{
+  "name": "m4m0-nexus",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "test": "npm run test -w backend",
+    "dev": "npm run dev -w frontend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
+    "format": "prettier --write \"backend/**/*.{ts,json}\" \"frontend/**/*.{ts,tsx,css,json}\" \"scripts/*.mjs\" \"docs/*.md\" \"*.{json,md,yml}\" \".github/**/*.yml\"",
+    "format:check": "prettier --check \"backend/**/*.{ts,json}\" \"frontend/**/*.{ts,tsx,css,json}\" \"scripts/*.mjs\" \"docs/*.md\" \"*.{json,md,yml}\" \".github/**/*.yml\"",
+    "test:integration": "node scripts/test-integration.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

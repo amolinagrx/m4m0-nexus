@@ -1,0 +1,53 @@
+name: Validate NEXUS
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run build
+      - run: npm audit --audit-level=high
+      - run: node scripts/setup-env.mjs --dev
+      - run: docker compose -f docker-compose.dev.yml up -d --wait
+      - run: node scripts/test-integration.mjs
+      - run: docker compose config --quiet
+      - run: docker compose build backend frontend
+      - run: docker compose -f docker-compose.local.yml up -d --build --wait --wait-timeout 180
+      - run: node scripts/test-compose.mjs
+      - if: always()
+        run: docker compose -f docker-compose.local.yml down
+      - if: always()
+        run: docker compose -f docker-compose.dev.yml down
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform-provider
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: terraform-provider/go.mod
+          cache-dependency-path: terraform-provider/go.sum
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go build ./...
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.6
+      - run: helm lint helm/m4m0-nexus
+      - run: helm template nexus helm/m4m0-nexus -f helm/m4m0-nexus/values.production.yaml > /tmp/nexus.yaml

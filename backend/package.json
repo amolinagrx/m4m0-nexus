@@ -1,0 +1,50 @@
+{
+  "name": "@nexus/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "test": "tsx --test test/*.test.ts",
+    "migrate": "tsx src/migrate.ts",
+    "seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.883.0",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.5.0",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@fastify/websocket": "^11.2.0",
+    "@kubernetes/client-node": "^1.3.0",
+    "argon2": "^0.44.0",
+    "bullmq": "^5.58.5",
+    "cron-parser": "^4.9.0",
+    "dotenv": "^17.2.2",
+    "fastify": "^5.6.0",
+    "ioredis": "^5.7.0",
+    "ldapts": "^8.0.9",
+    "pg": "^8.16.3",
+    "pino": "^9.9.0",
+    "socket.io": "^4.8.1",
+    "undici": "^7.16.0",
+    "ws": "^8.18.3",
+    "xmlrpc": "^1.3.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.1",
+    "@types/pg": "^8.15.5",
+    "@types/ws": "^8.18.1",
+    "@types/xmlrpc": "^1.3.10",
+    "pg-mem": "^3.0.5",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

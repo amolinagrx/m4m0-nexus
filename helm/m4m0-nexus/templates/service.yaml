@@ -1,0 +1,16 @@
+{{- range $component := list "backend" "frontend" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nexus.fullname" $ }}-{{ $component }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $component }}
+  ports:
+    - port: {{ if eq $component "backend" }}3001{{ else }}8080{{ end }}
+      targetPort: http
+      name: http
+{{- end }}

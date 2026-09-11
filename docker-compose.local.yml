@@ -1,0 +1,41 @@
+# Full local deployment. Run independently, without merging the production file.
+name: m4m0-nexus-local
+services:
+  database:
+    extends:
+      file: docker-compose.yml
+      service: database
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+  bootstrap:
+    extends:
+      file: docker-compose.yml
+      service: bootstrap
+  backend:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      CORS_ORIGIN: http://localhost:${NEXUS_HTTP_PORT:-8080}
+  frontend:
+    extends:
+      file: docker-compose.yml
+      service: frontend
+    ports:
+      - '127.0.0.1:${NEXUS_HTTP_PORT:-8080}:8080'
+    volumes:
+      - ./frontend/nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend: { condition: service_healthy }
+networks:
+  internal:
+    internal: true
+  edge: {}
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  backup_data: {}

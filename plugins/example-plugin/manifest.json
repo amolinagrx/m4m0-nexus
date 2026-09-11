@@ -1,0 +1,1 @@
+{"id":"example-plugin","name":"Audit extension","version":"1.0.0","description":"Example lifecycle hooks","author":"m4m0 consulting","entryPoint":"index.js"}
