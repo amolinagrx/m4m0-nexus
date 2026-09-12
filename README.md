@@ -127,6 +127,14 @@ docs/                    Guías operativas y estado de capacidades
 .github/workflows/       CI y construcción manual de artefactos
 ```
 
+## Docker y backups con Zerobyte
+
+En **Docker** puedes registrar hosts mediante HTTPS/mTLS, consultar contenedores y proyectos Compose, imágenes, volúmenes y redes; crear contenedores desde imágenes locales y operar su ciclo de vida. En **Backups Docker** puedes conectar Zerobyte v0.42.0, crear/editar programaciones, ejecutar copias, consultar historial y snapshots y abrir Zerobyte para restaurar.
+
+Las conexiones se guardan cifradas. Compose aplica automáticamente la migración a las instalaciones existentes. Incluimos un stack independiente de Zerobyte con HTTPS en `examples/zerobyte` y una prueba real de backup de un volumen Docker.
+
+[Configuración, despliegue y límites de Docker/Zerobyte](docs/DOCKER-ZEROBYTE.md).
+
 ## Conectar un hipervisor
 
 En **Infraestructuras → Añadir infraestructura**, selecciona el proveedor, introduce su endpoint HTTPS y sus credenciales. Después pulsa **Sincronizar**.

@@ -170,3 +170,30 @@ GET `/settings`: metadata del servicio. GET `/audit?limit=100`: máximo 500 regi
 Formato general: `{"error":"mensaje","requestId":"..."}`; validación añade `issues` con path y mensaje. Códigos: 400 validación, 401 autenticación, 403 autorización, 404 recurso ausente, 409 conflicto, 413 tamaño, 429 límite, 501 capacidad no implementada, 502 fallo de proveedor, 503 mantenimiento/dependencia, 504 tarea remota que no terminó dentro de la espera.
 
 No reintentes a ciegas POST/DELETE tras 5xx o timeout: una mutación externa puede haber comenzado. Los webhooks tienen su propia política de reintentos, separada de las operaciones del hipervisor.
+
+## Docker y Zerobyte
+
+| Método       | Ruta                                                           | Scope                            |
+| ------------ | -------------------------------------------------------------- | -------------------------------- |
+| GET / POST   | `/docker/hosts`                                                | `docker:read` / `docker:write`   |
+| PUT / DELETE | `/docker/hosts/:id`                                            | `docker:write`                   |
+| GET          | `/docker/hosts/:id/inventory`                                  | `docker:read`                    |
+| POST         | `/docker/hosts/:id/containers`                                 | `docker:write`                   |
+| POST         | `/docker/hosts/:id/volumes`                                    | `docker:write`                   |
+| POST         | `/docker/hosts/:id/containers/:containerId/action`             | `docker:write`                   |
+| GET          | `/docker/hosts/:id/containers/:containerId/logs?tail=200`      | `docker:logs`                    |
+| GET / POST   | `/zerobyte/instances`                                          | `backups:read` / `backups:write` |
+| PUT / DELETE | `/zerobyte/instances/:id`                                      | `backups:write`                  |
+| GET          | `/zerobyte/instances/:id/jobs`, `/resources`, `/history`       | `backups:read`                   |
+| POST         | `/zerobyte/instances/:id/jobs`                                 | `backups:write`                  |
+| PUT / DELETE | `/zerobyte/instances/:id/jobs/:jobId`                          | `backups:write`                  |
+| POST         | `/zerobyte/instances/:id/jobs/:jobId/run`                      | `backups:write`                  |
+| GET          | `/zerobyte/instances/:id/repositories/:repositoryId/snapshots` | `backups:read`                   |
+
+`docker:write`, `docker:logs` y los scopes de backups requieren rol admin. Todas las rutas requieren autenticación y se someten al modo mantenimiento y al rate limit de NEXUS. Las mutaciones quedan en auditoría. El inventario no devuelve variables de entorno, opciones de drivers, claves privadas ni configuración de repositorios.
+
+Host: `{name, endpoint, credentials:{caCert?, clientCert, clientKey}}`. Instancia Zerobyte: `{name, endpoint, dockerHostId, credentials:{apiKey, caCert?}}`. Endpoints HTTPS sin paths ni credenciales embebidas. PUT conserva credenciales omitidas únicamente si el endpoint no cambia.
+
+Contenedor: `{name, image, ports:[{containerPort,hostPort,hostIp}], volumes:[{name,target,readOnly}], restartPolicy}`. Imagen y volúmenes deben existir. Devuelve `201` con `Id`; se crea detenido. Volumen: `{name}`. Acción: `{action:"start"|"stop"|"restart"|"pause"|"unpause"|"remove"}`. El borrado devuelve conflicto si está en ejecución y conserva sus volúmenes.
+
+Trabajo Zerobyte: `{name,volumeId,repositoryId,enabled,cronExpression,retentionPolicy:{keepLast:7},includePaths:[],excludePatterns:[]}`. El origen es el `shortId` de un volumen Zerobyte y el repositorio es su `id`. Un PUT no puede cambiar el origen del trabajo. Run devuelve `202` con `{taskId,status:"started"}`; la finalización se consulta en jobs/history. Snapshots usa el `shortId` del repositorio y devuelve tiempos en milisegundos Unix. Las copias de datos y las restauraciones pertenecen a Zerobyte, no a `/backups/:id/restore` de NEXUS.

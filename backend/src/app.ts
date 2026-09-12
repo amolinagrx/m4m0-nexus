@@ -15,6 +15,7 @@ import { redis } from './config/redis.js';
 import { AppError } from './utils/errors.js';
 import { authenticate } from './api/middleware/auth.js';
 import { tokenRateLimit } from './api/middleware/ratelimit.js';
+import { containerRoutes } from './api/routes/containers.js';
 import { authRoutes } from './api/routes/auth.js';
 import { infrastructureRoutes } from './api/routes/infrastructure.js';
 import { vmRoutes } from './api/routes/vms.js';
@@ -141,6 +142,7 @@ export async function buildApp() {
       });
       for (const routes of [
         authRoutes,
+        containerRoutes,
         infrastructureRoutes,
         vmRoutes,
         tokenRoutes,

@@ -59,6 +59,8 @@ import { api, post, setAccessToken, getAccessToken, download, type Identity } fr
 import { demoData, demoInfrastructure, demoVMs, type Row } from './services/demo';
 import BackupHistory from './pages/Backup';
 import ExportImport from './pages/ExportImport';
+import DockerView from './pages/Docker';
+import ZerobyteView from './pages/Zerobyte';
 import KubernetesView from './pages/Kubernetes';
 import { Empty, Badge, Provider, Cell, Fields, type Field } from './components/ResourceUI';
 import { VMConsole } from './components/VMConsole';
@@ -71,12 +73,14 @@ const groups = [
       ['/vms', 'Máquinas virtuales', Monitor],
       ['/hosts', 'Hosts', Server],
       ['/storage', 'Almacenamiento', HardDrive],
+      ['/docker', 'Docker', Box],
       ['/kubernetes', 'Kubernetes', Boxes],
     ],
   },
   {
     label: 'OPERACIONES',
     items: [
+      ['/zerobyte', 'Backups Docker', Database],
       ['/backup', 'Backups', Database],
       ['/webhooks', 'Webhooks', Webhook],
       ['/tokens', 'API tokens', KeyRound],
@@ -101,6 +105,8 @@ const titles: Record<string, string> = {
   '/vms': 'Máquinas virtuales',
   '/hosts': 'Hosts',
   '/storage': 'Almacenamiento',
+  '/docker': 'Docker',
+  '/zerobyte': 'Backups Docker · Zerobyte',
   '/kubernetes': 'Kubernetes',
   '/backup': 'Backups',
   '/webhooks': 'Webhooks',
@@ -118,6 +124,8 @@ const descriptions: Record<string, string> = {
   '/infrastructure': 'Conecta y sincroniza tus entornos de virtualización.',
   '/vms': 'Supervisa y opera las máquinas de todos tus entornos.',
   '/backup': 'Protege la configuración y programa copias de tus máquinas.',
+  '/docker': 'Contenedores, proyectos Compose y datos persistentes de tus hosts.',
+  '/zerobyte': 'Programa y supervisa las copias de tus datos Docker con Zerobyte.',
   '/kubernetes': 'Explora los recursos y las cargas de tus clusters.',
   '/webhooks': 'Conecta los eventos de tu infraestructura con tus herramientas.',
   '/tokens': 'Acceso programático con permisos granulares.',
@@ -289,9 +297,11 @@ export default function App() {
     [selectedInfra, setSelectedInfra] = useState(''),
     [live, setLive] = useState(false);
   const [history, setHistory] = useState<number[]>([]);
+  const [managementRevision, setManagementRevision] = useState(0);
   const canManage = !identity || identity.role === 'admin';
   const canWrite = !identity || identity.role !== 'readonly';
   const adminPages = [
+    '/zerobyte',
     '/backup',
     '/plugins',
     '/users',
@@ -303,7 +313,10 @@ export default function App() {
   ];
   const editable =
     canWrite && (!['/infrastructure', '/webhooks', ...adminPages].includes(path) || canManage);
-  const refresh = () => setRevision((x) => x + 1);
+  const refresh = () => {
+    setRevision((x) => x + 1);
+    setManagementRevision((x) => x + 1);
+  };
   const notify = (m: string) => {
     setMessage(m);
     setTimeout(() => setMessage(''), 6000);
@@ -372,7 +385,18 @@ export default function App() {
   };
   const endpoint = endpoints[path] ?? path;
   useEffect(() => {
-    if (['/', '/ldap', '/export-import', '/maintenance', '/settings', '/kubernetes'].includes(path))
+    if (
+      [
+        '/',
+        '/ldap',
+        '/export-import',
+        '/maintenance',
+        '/settings',
+        '/kubernetes',
+        '/docker',
+        '/zerobyte',
+      ].includes(path)
+    )
       return;
     setError('');
     if (path === '/infrastructure') {
@@ -1097,6 +1121,22 @@ export default function App() {
                 </span>
               </div>
             </>
+          ) : path === '/docker' ? (
+            <DockerView
+              revision={managementRevision}
+              demo={demo}
+              canManage={canManage}
+              notify={notify}
+            />
+          ) : path === '/zerobyte' ? (
+            canManage ? (
+              <ZerobyteView revision={managementRevision} demo={demo} notify={notify} />
+            ) : (
+              <Empty
+                title="Acceso de administrador requerido"
+                text="La gestión de backups requiere una cuenta administradora."
+              />
+            )
           ) : path === '/kubernetes' ? (
             <KubernetesView demo={demo} infra={infra} notify={notify} />
           ) : path === '/ldap' ? (

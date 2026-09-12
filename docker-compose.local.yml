@@ -9,6 +9,10 @@ services:
     extends:
       file: docker-compose.yml
       service: redis
+  migrate:
+    extends:
+      file: docker-compose.yml
+      service: migrate
   bootstrap:
     extends:
       file: docker-compose.yml

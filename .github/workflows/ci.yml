@@ -24,6 +24,7 @@ jobs:
       - run: docker compose build backend frontend
       - run: docker compose -f docker-compose.local.yml up -d --build --wait --wait-timeout 180
       - run: node scripts/test-compose.mjs
+      - run: node scripts/test-container-providers.mjs
       - if: always()
         run: docker compose -f docker-compose.local.yml down
       - if: always()

@@ -61,6 +61,22 @@ services:
     cap_drop: [ALL]
     restart: unless-stopped
     networks: [internal, edge]
+  migrate:
+    build: ./database
+    entrypoint: [sh, /opt/nexus/migrate.sh]
+    environment:
+      PGHOST: database
+      PGDATABASE: nexus
+      PGUSER: nexus_owner
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    depends_on:
+      database: { condition: service_healthy }
+    restart: 'no'
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [internal]
   bootstrap:
     image: m4m0-nexus-backend:latest
     build:
@@ -72,6 +88,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@m4m0.es}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
     depends_on:
+      migrate: { condition: service_completed_successfully }
       database: { condition: service_healthy }
     healthcheck:
       disable: true

@@ -35,7 +35,20 @@ export type BackupConfig = z.infer<typeof exportSchema>;
 const str = z.string(),
   id = z.string().uuid(),
   nullable = str.nullable();
+const connectionBackup = z
+  .object({
+    id,
+    name: str,
+    endpoint: str.url(),
+    credentials_encrypted: str,
+    status: str,
+    last_sync: nullable,
+    created_at: str,
+  })
+  .strict();
 const tables = {
+  docker_hosts: connectionBackup,
+  zerobyte_instances: connectionBackup.extend({ docker_host_id: id }).strict(),
   infrastructures: z
     .object({
       id,
@@ -90,6 +103,8 @@ const tables = {
 };
 type TableName = keyof typeof tables;
 const selections: Record<TableName, keyof BackupConfig> = {
+  docker_hosts: 'includeInfrastructures',
+  zerobyte_instances: 'includeInfrastructures',
   infrastructures: 'includeInfrastructures',
   users: 'includeUsers',
   webhooks: 'includeWebhooks',
@@ -177,7 +192,14 @@ export class BackupService {
             decrypt(value, env.ENCRYPTION_KEY);
     const restored = await transaction(async (tx) => {
       let count = 0;
-      for (const table of ['users', 'infrastructures', 'webhooks', 'api_tokens'] as TableName[])
+      for (const table of [
+        'users',
+        'infrastructures',
+        'docker_hosts',
+        'zerobyte_instances',
+        'webhooks',
+        'api_tokens',
+      ] as TableName[])
         for (const row of validated[table] ?? []) {
           const entries = Object.entries(row);
           const columns = entries.map(([k]) => '"' + k + '"').join(',');

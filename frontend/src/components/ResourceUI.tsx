@@ -9,12 +9,13 @@ export function Badge({ value }: { value: unknown }) {
     'running',
     'online',
     'completed',
+    'success',
     'true',
     'active',
     'admin',
     'ready',
   ].includes(text.toLowerCase());
-  const bad = ['error', 'failed', 'offline'].includes(text.toLowerCase());
+  const bad = ['error', 'failed', 'offline', 'warning'].includes(text.toLowerCase());
   const labels: Record<string, string> = {
     connected: 'Conectado',
     running: 'En ejecución',
@@ -87,6 +88,7 @@ export type Field = {
   label: string;
   type?: string;
   options?: string[];
+  optionLabels?: Record<string, string>;
   initial?: unknown;
   required?: boolean;
   hint?: string;
@@ -131,7 +133,9 @@ export function Fields({
           {f.options ? (
             <select name={f.key} defaultValue={String(initial[f.key] ?? f.initial ?? f.options[0])}>
               {f.options.map((o) => (
-                <option key={o}>{o}</option>
+                <option key={o} value={o}>
+                  {f.optionLabels?.[o] ?? o}
+                </option>
               ))}
             </select>
           ) : f.type === 'textarea' ? (

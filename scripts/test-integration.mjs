@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { config } from 'dotenv';
 import { spawnSync } from 'node:child_process';
 config({ quiet: true });
@@ -58,6 +59,29 @@ if (!found.stdout?.trim()) {
     'GRANT USAGE ON SCHEMA public TO nexus; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nexus; GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO nexus; REVOKE UPDATE,DELETE,TRUNCATE ON audit_logs FROM nexus;',
   ]);
 }
+const migration = spawnSync(
+  'docker',
+  [
+    'compose',
+    '-f',
+    'docker-compose.dev.yml',
+    'exec',
+    '-T',
+    'database',
+    'psql',
+    '-U',
+    'nexus_owner',
+    '-d',
+    'nexus_test',
+    '-v',
+    'ON_ERROR_STOP=1',
+  ],
+  {
+    input: await readFile('database/init-scripts/003_docker_zerobyte.sql', 'utf8'),
+    stdio: ['pipe', 'inherit', 'inherit'],
+  },
+);
+if (migration.status) process.exit(migration.status);
 const r = spawnSync('npm', ['test'], {
   stdio: 'inherit',
   env: { ...process.env, DATABASE_URL: url.toString(), NEXUS_INTEGRATION: '1' },

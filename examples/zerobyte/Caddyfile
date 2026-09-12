@@ -1,0 +1,4 @@
+{$ZEROBYTE_HOST} {
+  tls internal
+  reverse_proxy zerobyte:4096
+}

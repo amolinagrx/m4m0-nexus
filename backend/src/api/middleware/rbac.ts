@@ -2,6 +2,9 @@ import type { FastifyRequest } from 'fastify';
 import type { Principal } from '../../models/types.js';
 import { AppError } from '../../utils/errors.js';
 export const scopes = [
+  'docker:read',
+  'docker:write',
+  'docker:logs',
   'vms:read',
   'vms:write',
   'infra:read',
@@ -25,6 +28,8 @@ export const scopes = [
   'audit:read',
 ] as const;
 const adminOnly = new Set([
+  'docker:write',
+  'docker:logs',
   'infra:write',
   'users:read',
   'users:write',

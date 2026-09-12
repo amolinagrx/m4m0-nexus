@@ -30,6 +30,132 @@ test(
     const access = app.jwt.sign({ sub: id }, { expiresIn: '15m' });
     const headers = { authorization: 'Bearer ' + access };
     try {
+      await t.test(
+        'Docker/Zerobyte CRUD encrypts credentials, enforces roles and exports connections',
+        async () => {
+          let hostId = '',
+            instanceId = '';
+          const secret = 'private-fixture-key-not-a-real-credential';
+          try {
+            assert.equal((await app.inject('/api/v1/docker/hosts')).statusCode, 401);
+            const host = await app.inject({
+              method: 'POST',
+              url: '/api/v1/docker/hosts',
+              headers,
+              payload: {
+                name: `docker-${id}`,
+                endpoint: 'https://docker.example.com:2376',
+                credentials: { clientCert: 'fixture-cert', clientKey: secret },
+              },
+            });
+            assert.equal(host.statusCode, 201, host.body);
+            hostId = host.json().id;
+            assert.ok(!host.body.includes(secret));
+            const stored = (
+              await db.query('SELECT credentials_encrypted FROM docker_hosts WHERE id=$1', [hostId])
+            ).rows[0];
+            assert.ok(!stored.credentials_encrypted.includes(secret));
+            const instance = await app.inject({
+              method: 'POST',
+              url: '/api/v1/zerobyte/instances',
+              headers,
+              payload: {
+                name: `zerobyte-${id}`,
+                endpoint: 'https://backup.example.com',
+                dockerHostId: hostId,
+                credentials: { apiKey: secret },
+              },
+            });
+            assert.equal(instance.statusCode, 201, instance.body);
+            instanceId = instance.json().id;
+            assert.ok(
+              !(await app.inject({ url: '/api/v1/zerobyte/instances', headers })).body.includes(
+                secret,
+              ),
+            );
+            assert.equal(
+              (
+                await app.inject({
+                  method: 'DELETE',
+                  url: `/api/v1/docker/hosts/${hostId}`,
+                  headers,
+                })
+              ).statusCode,
+              409,
+            );
+            const change = await app.inject({
+              method: 'PUT',
+              url: `/api/v1/docker/hosts/${hostId}`,
+              headers,
+              payload: {
+                name: `docker-${id}`,
+                endpoint: 'https://different.example.com',
+                credentials: {},
+              },
+            });
+            assert.equal(change.statusCode, 400, 'Changing an origin requires fresh credentials');
+            assert.equal(
+              (
+                await app.inject({
+                  method: 'POST',
+                  url: `/api/v1/docker/hosts/${hostId}/containers/bad/action`,
+                  headers,
+                  payload: { action: 'exec' },
+                })
+              ).statusCode,
+              400,
+            );
+            const backup = await new BackupService().export({
+              includeInfrastructures: true,
+              includeUsers: false,
+              includeWebhooks: false,
+              includeTokens: false,
+              includeAuditLogs: false,
+              format: 'json',
+              encrypt: false,
+            });
+            const exported = JSON.parse(JSON.parse(backup.toString()).payload).data;
+            assert.ok(exported.docker_hosts.some((h: { id: string }) => h.id === hostId));
+            assert.ok(exported.zerobyte_instances.some((i: { id: string }) => i.id === instanceId));
+            for (const role of ['user', 'readonly']) {
+              await db.query('UPDATE users SET role=$1 WHERE id=$2', [role, id]);
+              assert.equal(
+                (await app.inject({ url: '/api/v1/docker/hosts', headers })).statusCode,
+                200,
+              );
+              assert.equal(
+                (await app.inject({ url: '/api/v1/zerobyte/instances', headers })).statusCode,
+                403,
+              );
+              assert.equal(
+                (
+                  await app.inject({
+                    method: 'POST',
+                    url: `/api/v1/docker/hosts/${hostId}/containers/c/action`,
+                    headers,
+                    payload: { action: 'stop' },
+                  })
+                ).statusCode,
+                403,
+              );
+              assert.equal(
+                (
+                  await app.inject({
+                    url: `/api/v1/docker/hosts/${hostId}/containers/c/logs`,
+                    headers,
+                  })
+                ).statusCode,
+                403,
+              );
+            }
+          } finally {
+            await db.query("UPDATE users SET role='admin' WHERE id=$1", [id]);
+            if (instanceId)
+              await db.query('DELETE FROM zerobyte_instances WHERE id=$1', [instanceId]);
+            if (hostId) await db.query('DELETE FROM docker_hosts WHERE id=$1', [hostId]);
+          }
+        },
+      );
       await t.test('readiness checks real PostgreSQL and Redis', async () => {
         assert.equal((await app.inject('/health/ready')).statusCode, 200);
       });

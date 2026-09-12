@@ -1,0 +1,36 @@
+# Standalone stack on the Docker host whose persistent data you want to protect.
+name: nexus-zerobyte
+services:
+  zerobyte:
+    image: ghcr.io/nicotsx/zerobyte:v0.42.0
+    environment:
+      BASE_URL: https://${ZEROBYTE_HOST:?Set ZEROBYTE_HOST}
+      APP_SECRET: ${ZEROBYTE_APP_SECRET:?Generate a random secret of at least 32 characters}
+      TZ: ${TZ:-Europe/Madrid}
+      TRUST_PROXY: 'true'
+    volumes:
+      - zerobyte_data:/var/lib/zerobyte
+      - restore_data:/restore
+      # Mount only the data directory chosen for backups, not the Docker socket.
+      - ${DOCKER_BACKUP_SOURCE:?Set the absolute source directory}:/sources/docker:ro
+    restart: unless-stopped
+    networks: [backups]
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      ZEROBYTE_HOST: ${ZEROBYTE_HOST}
+    ports:
+      - '${ZEROBYTE_BIND_IP:-127.0.0.1}:443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks: [backups]
+networks:
+  backups: {}
+volumes:
+  zerobyte_data: {}
+  restore_data: {}
+  caddy_data: {}
+  caddy_config: {}
